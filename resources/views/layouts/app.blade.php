@@ -18,20 +18,27 @@
 <body class="font-sans antialiased bg-gray-50">
     <div class="min-h-screen">
         @auth
-            <!-- Navigation -->
-            <nav class="bg-white border-b border-gray-200 fixed w-full z-30 top-0">
-                <div class="px-3 py-3 lg:px-5 lg:pl-3">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center justify-start">
-                            <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 text-gray-600 rounded cursor-pointer hover:text-gray-900 hover:bg-gray-100">
-                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
-                                </svg>
-                            </button>
-                            <a href="{{ route('dashboard') }}" class="flex ml-2 md:mr-24">
-                                <span class="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap text-blue-600">Sistema Campaña</span>
-                            </a>
-                        </div>
+            <div x-data="{ sidebarOpen: false }" 
+                 @keydown.escape="sidebarOpen = false"
+                 x-init="$watch('sidebarOpen', value => {
+                     if (window.innerWidth < 1024) {
+                         document.body.style.overflow = value ? 'hidden' : ''
+                     }
+                 })">
+                <!-- Navigation -->
+                <nav class="bg-white border-b border-gray-200 fixed w-full z-30 top-0">
+                    <div class="px-3 py-3 lg:px-5 lg:pl-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center justify-start">
+                                <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 text-gray-600 rounded cursor-pointer hover:text-gray-900 hover:bg-gray-100">
+                                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </button>
+                                <a href="{{ route('dashboard') }}" class="flex ml-2 md:mr-24">
+                                    <span class="self-center text-xl font-semibold sm:text-2xl whitespace-nowrap text-blue-600">Sistema Campaña</span>
+                                </a>
+                            </div>
                         <div class="flex items-center">
                             <div class="flex items-center ml-3">
                                 <div x-data="{ open: false }" class="relative">
@@ -68,11 +75,23 @@
                 </div>
             </nav>
 
-            <!-- Sidebar -->
-            <aside x-data="{ sidebarOpen: true }" 
-                   :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" 
-                   class="fixed top-0 left-0 z-20 w-64 h-screen pt-20 transition-transform bg-white border-r border-gray-200 lg:translate-x-0"
-                   aria-label="Sidebar">
+                <!-- Mobile Overlay -->
+                <div x-show="sidebarOpen" 
+                     x-transition:enter="transition-opacity ease-linear duration-300"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition-opacity ease-linear duration-300" 
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"
+                     @click="sidebarOpen = false"
+                     class="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden"
+                     style="display: none;">
+                </div>
+
+                <!-- Sidebar -->
+                <aside :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'" 
+                       class="fixed top-0 left-0 z-40 w-64 h-screen pt-20 transition-transform bg-white border-r border-gray-200 lg:translate-x-0 lg:z-20"
+                       aria-label="Sidebar">
                 <div class="h-full px-3 pb-4 overflow-y-auto bg-white">
                     <ul class="space-y-2 font-medium">
                         @if(Auth::user()->esAdmin())
@@ -192,12 +211,13 @@
                         @endif
                     </ul>
                 </div>
-            </aside>
+                </aside>
 
-            <!-- Main Content -->
-            <div class="p-4 lg:ml-64">
-                <div class="mt-14">
-                    {{ $slot }}
+                <!-- Main Content -->
+                <div class="p-4 lg:ml-64">
+                    <div class="mt-14">
+                        {{ $slot }}
+                    </div>
                 </div>
             </div>
         @else

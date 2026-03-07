@@ -151,7 +151,18 @@ class User extends Authenticatable
      */
     public function puedeMarcarVotos(): bool
     {
-        return $this->tienePermiso('votantes.marcar_voto');
+        return $this->tienePermiso('votantes.marcar_voto') || $this->esAdmin();
+    }
+
+    /**
+     * Verificar si puede usar funcionalidad de PC móvil
+     */
+    public function puedeUsarPcMovil(): bool
+    {
+        return $this->tienePermiso('votantes.marcar_voto') || 
+               $this->tienePermiso('pc_movil.usar') || 
+               $this->esAdmin() ||
+               in_array(strtolower($this->role?->nombre ?? ''), ['pc movil', 'pc móvil', 'operador pc movil', 'operador pc móvil']);
     }
 
     /**
