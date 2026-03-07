@@ -23,6 +23,7 @@ class VotantesList extends Component
     public $filtroEstado = '';
     public $filtroEstadoVoto = '';
     public $filtroTransporte = '';
+    public $filtroPcMovil = '';
     public $filtroLider = '';
     public $filtroDistrito = '';
     public $sortBy = 'created_at';
@@ -60,7 +61,7 @@ class VotantesList extends Component
 
     public function limpiarFiltros()
     {
-        $this->reset(['search', 'filtroIntencion', 'filtroEstado', 'filtroEstadoVoto', 'filtroTransporte', 'filtroLider', 'filtroDistrito']);
+        $this->reset(['search', 'filtroIntencion', 'filtroEstado', 'filtroEstadoVoto', 'filtroTransporte', 'filtroPcMovil', 'filtroLider', 'filtroDistrito']);
         $this->resetPage();
     }
 
@@ -87,6 +88,33 @@ class VotantesList extends Component
 
         $this->dispatch('votante-actualizado');
         session()->flash('message', 'Voto registrado exitosamente.');
+    }
+
+    public function marcarPcMovil($id)
+    {
+        $user = Auth::user();
+        
+        // Verificar si el usuario tiene permisos (mismos permisos que marcar votos)
+        if (!$user->puedeMarcarVotos()) {
+            session()->flash('error', 'No tienes permisos para registrar PC móvil.');
+            return;
+        }
+        
+        $votante = Votante::findOrFail($id);
+        $votante->paso_por_pc_movil = !$votante->paso_por_pc_movil; // Toggle
+        
+        if ($votante->paso_por_pc_movil) {
+            $votante->fecha_paso_pc_movil = now();
+            $mensaje = 'Paso por PC móvil registrado exitosamente.';
+        } else {
+            $votante->fecha_paso_pc_movil = null;
+            $mensaje = 'Paso por PC móvil removido exitosamente.';
+        }
+        
+        $votante->save();
+
+        $this->dispatch('votante-actualizado');
+        session()->flash('message', $mensaje);
     }
 
     public function eliminarVotante($id)
@@ -116,7 +144,7 @@ class VotantesList extends Component
             'CI', 'NOMBRES', 'APELLIDOS', 'TELÉFONO', 'EMAIL', 'DIRECCIÓN', 
             'BARRIO', 'ZONA', 'DISTRITO', 'MESA/ORDEN', 'LOCAL VOTACIÓN',
             'DEPARTAMENTO', 'LÍDER ASIGNADO', 'CÓDIGO INTENCIÓN', 'ESTADO CONTACTO',
-            'NECESITA TRANSPORTE', 'YA VOTÓ', 'FECHA NACIMIENTO', 'NOTAS'
+            'NECESITA TRANSPORTE', 'YA VOTÓ', 'PASÓ POR PC MÓVIL', 'FECHA NACIMIENTO', 'NOTAS'
         ];
         
         $fila = 5; // Empezar después del título
@@ -131,7 +159,7 @@ class VotantesList extends Component
         }
         
         // Estilo para encabezados
-        $sheet->getStyle("A{$fila}:S{$fila}")->applyFromArray([
+        $sheet->getStyle("A{$fila}:T{$fila}")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2563eb']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -183,6 +211,14 @@ class VotantesList extends Component
             $query->where('necesita_transporte', $this->filtroTransporte);
         }
 
+        if ($this->filtroPcMovil !== '') {
+            if ($this->filtroPcMovil === 'paso') {
+                $query->where('paso_por_pc_movil', true);
+            } elseif ($this->filtroPcMovil === 'no_paso') {
+                $query->where('paso_por_pc_movil', false);
+            }
+        }
+
         if ($this->filtroLider) {
             $query->where('lider_asignado_id', $this->filtroLider);
         }
@@ -204,8 +240,9 @@ class VotantesList extends Component
             $liderNombre = $votante->lider && $votante->lider->usuario ? $votante->lider->usuario->name : '-';
             $necesitaTransporte = $votante->necesita_transporte ? 'SÍ' : 'NO';
             $yaVoto = $votante->ya_voto ? 'SÍ' : 'NO';
+            $pasoPorPcMovil = $votante->paso_por_pc_movil ? 'SÍ' : 'NO';
             $fechaNacimiento = $votante->fecha_nacimiento ? $votante->fecha_nacimiento->format('d/m/Y') : '-';
-            
+
             $datosVotante = [
                 $votante->ci,
                 $votante->nombres,
@@ -224,6 +261,7 @@ class VotantesList extends Component
                 $votante->estado_contacto ?: '-',
                 $necesitaTransporte,
                 $yaVoto,
+                $pasoPorPcMovil,
                 $fechaNacimiento,
                 $votante->notas ?: '-'
             ];
@@ -238,7 +276,7 @@ class VotantesList extends Component
         }
         
         // Ajustar ancho de columnas
-        foreach (range('A', 'S') as $columnID) {
+        foreach (range('A', 'T') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
         
@@ -306,6 +344,14 @@ class VotantesList extends Component
 
         if ($this->filtroTransporte !== '') {
             $query->where('necesita_transporte', $this->filtroTransporte);
+        }
+
+        if ($this->filtroPcMovil !== '') {
+            if ($this->filtroPcMovil === 'paso') {
+                $query->where('paso_por_pc_movil', true);
+            } elseif ($this->filtroPcMovil === 'no_paso') {
+                $query->where('paso_por_pc_movil', false);
+            }
         }
 
         if ($this->filtroLider) {

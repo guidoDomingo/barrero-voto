@@ -34,6 +34,8 @@ class Votante extends Model
         'estado_contacto',
         'ya_voto',
         'voto_registrado_en',
+        'paso_por_pc_movil',
+        'fecha_paso_pc_movil',
         'necesita_transporte',
         'notas',
         // Campos adicionales del Excel TSJE
@@ -54,8 +56,10 @@ class Votante extends Model
         'fecha_nacimiento' => 'date',
         'fecha_afiliacion' => 'date',
         'ya_voto' => 'boolean',
+        'paso_por_pc_movil' => 'boolean',
         'necesita_transporte' => 'boolean',
         'voto_registrado_en' => 'datetime',
+        'fecha_paso_pc_movil' => 'datetime',
         'latitud' => 'decimal:7',
         'longitud' => 'decimal:7',
     ];
@@ -171,5 +175,13 @@ class Votante extends Model
     public function scopeContactados($query)
     {
         return $query->whereHas('contactos');
+    }
+
+    /**
+     * Scope para votantes que pasaron por PC móvil
+     */
+    public function scopePasaronPorPcMovil($query)
+    {
+        return $query->where('paso_por_pc_movil', true);
     }
 }

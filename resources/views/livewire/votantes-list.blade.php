@@ -50,7 +50,7 @@
         </div>
 
         <!-- Segunda fila de filtros para datos TSJE -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <!-- Distrito -->
             <select wire:model.live="filtroDistrito" class="border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 <option value="">Todos los distritos</option>
@@ -65,6 +65,13 @@
                 @foreach($lideres as $lider)
                     <option value="{{ $lider->id }}">{{ $lider->usuario->name }}</option>
                 @endforeach
+            </select>
+
+            <!-- PC Móvil -->
+            <select wire:model.live="filtroPcMovil" class="border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <option value="">Todos (PC Móvil)</option>
+                <option value="paso">Pasó por PC Móvil</option>
+                <option value="no_paso">No pasó por PC Móvil</option>
             </select>
 
             <!-- Espacio para futuro filtro -->
@@ -152,6 +159,9 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Estado de Voto
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            PC Móvil
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Acciones
@@ -243,6 +253,22 @@
                                     </span>
                                 @endif
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if($votante->paso_por_pc_movil)
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        Pasó por PC
+                                    </span>
+                                    @if($votante->fecha_paso_pc_movil)
+                                        <div class="text-xs text-gray-400 mt-1">
+                                            {{ $votante->fecha_paso_pc_movil->format('d/m H:i') }}
+                                        </div>
+                                    @endif
+                                @else
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        No pasó
+                                    </span>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex gap-2">
                                     @if(!$votante->ya_voto && auth()->user()->puedeMarcarVotos())
@@ -251,6 +277,17 @@
                                                 class="text-green-600 hover:text-green-900" title="Marcar voto">
                                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </button>
+                                    @endif
+
+                                    @if(auth()->user()->puedeMarcarVotos())
+                                        <button wire:click="marcarPcMovil({{ $votante->id }})" 
+                                                wire:confirm="¿Cambiar el estado de PC móvil para este votante?"
+                                                class="text-blue-600 hover:text-blue-900" 
+                                                title="{{ $votante->paso_por_pc_movil ? 'Marcar como NO pasó por PC móvil' : 'Marcar como pasó por PC móvil' }}">
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9 12a1 1 0 102 0V8a1 1 0 10-2 0v4zm1-10C4.477 2 0 6.477 0 12s4.477 10 10 10 10-4.477 10-10S15.523 2 10 2zm0 18a8 8 0 110-16 8 8 0 010 16z"></path>
                                             </svg>
                                         </button>
                                     @endif
@@ -277,7 +314,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">
+                            <td colspan="12" class="px-6 py-4 text-center text-sm text-gray-500">
                                 No se encontraron votantes
                             </td>
                         </tr>
