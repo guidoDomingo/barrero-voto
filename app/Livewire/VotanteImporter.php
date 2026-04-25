@@ -248,7 +248,16 @@ class VotanteImporter extends Component
 
     public function render()
     {
-        $lideres = Lider::with('usuario')->get();
+        $user = auth()->user();
+        $liderIds = $user->liderIdsPropios();
+
+        if ($liderIds === null) {
+            $lideres = Lider::with('usuario')->get();
+        } elseif ($liderIds->isNotEmpty()) {
+            $lideres = Lider::with('usuario')->whereIn('id', $liderIds)->get();
+        } else {
+            $lideres = collect();
+        }
 
         return view('livewire.votante-importer', [
             'lideres' => $lideres,

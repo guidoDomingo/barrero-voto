@@ -63,11 +63,15 @@ class VisitasList extends Component
 
     public function mount()
     {
+        // Pre-cargar líder en el formulario de nueva visita según rol
         $user = Auth::user();
-        
         if ($user->esLider() && $user->lider) {
             $this->lider_id = $user->lider->id;
-            $this->filtroLider = $user->lider->id;
+        } elseif ($user->esCandidato() && $user->candidato) {
+            $lideres = $user->candidato->lideres;
+            if ($lideres->count() === 1) {
+                $this->lider_id = $lideres->first()->id;
+            }
         }
     }
 
@@ -209,22 +213,13 @@ class VisitasList extends Component
         $query = Visita::with(['votante', 'lider.usuario', 'usuarioRegistro'])
             ->orderBy('fecha_visita', 'desc');
 
-        // Filtrar según rol del usuario
-        if ($user->esLider() && $user->lider) {
-            // Los líderes solo ven sus propias visitas
-            $query->where('lider_id', $user->lider->id);
-        } elseif ($user->esAdmin() && $this->filtroLider) {
-            // Los admins pueden filtrar por líder específico
-            $query->where('lider_id', $this->filtroLider);
-        } elseif ($user->esVeedor()) {
-            // Los veedores pueden ver todas las visitas pero no modificarlas
-            // Aplicar filtro por líder si existe
-            if ($this->filtroLider) {
-                $query->where('lider_id', $this->filtroLider);
-            }
-        } elseif (!$user->esAdmin()) {
-            // Si no tiene permisos, no ver ninguna visita
+        // Todos los roles ven todas las visitas; filtro de líder es voluntario
+        $accesoIds = $user->liderIdsParaListas();
+        if ($accesoIds !== null && $accesoIds->isEmpty()) {
             $query->whereRaw('1 = 0');
+        }
+        if ($this->filtroLider) {
+            $query->where('lider_id', $this->filtroLider);
         }
 
         // Búsqueda
@@ -253,8 +248,8 @@ class VisitasList extends Component
 
         $visitas = $query->paginate($this->porPagina);
         
-        $votantes = Votante::orderBy('apellidos')->get();
         $lideres = Lider::with('usuario')->get();
+        $votantes = Votante::orderBy('apellidos')->get();
 
         return view('livewire.visitas-list', [
             'visitas' => $visitas,

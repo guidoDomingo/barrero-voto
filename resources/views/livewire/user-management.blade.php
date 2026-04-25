@@ -75,6 +75,7 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidato</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último acceso</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
@@ -101,8 +102,9 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @if($usuario->role)
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                                             @if($usuario->role->slug === 'admin') bg-purple-100 text-purple-800
+                                            @elseif($usuario->role->slug === 'candidato') bg-yellow-100 text-yellow-800
                                             @elseif($usuario->role->slug === 'lider') bg-blue-100 text-blue-800
                                             @elseif($usuario->role->slug === 'veedor') bg-green-100 text-green-800
                                             @else bg-gray-100 text-gray-800 @endif">
@@ -112,6 +114,26 @@
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                                             Sin rol
                                         </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    @php
+                                        // Para líderes, el candidato viene de lideres.candidato_id; para el resto, de users.candidato_id
+                                        $candidatoNombre = null;
+                                        if ($usuario->role?->slug === 'lider' && $usuario->lider?->candidato?->usuario) {
+                                            $candidatoNombre = $usuario->lider->candidato->usuario->name;
+                                        } elseif ($usuario->role?->slug !== 'candidato' && $usuario->candidatoAsignado?->usuario) {
+                                            $candidatoNombre = $usuario->candidatoAsignado->usuario->name;
+                                        }
+                                    @endphp
+                                    @if($candidatoNombre)
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            {{ $candidatoNombre }}
+                                        </span>
+                                    @elseif($usuario->role?->slug === 'candidato')
+                                        <span class="text-xs text-gray-400 italic">Es candidato</span>
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -176,7 +198,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
+                                <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
                                     No se encontraron usuarios
                                 </td>
                             </tr>
@@ -247,7 +269,7 @@
                             <!-- Rol -->
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Rol *</label>
-                                <select wire:model="role_id" 
+                                <select wire:model.live="role_id"
                                         class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 @error('role_id') border-red-500 @enderror">
                                     <option value="">Seleccionar rol</option>
                                     @foreach($roles as $role)
@@ -264,6 +286,30 @@
                                     <span class="ml-2 text-sm font-medium text-gray-700">Usuario activo</span>
                                 </label>
                             </div>
+
+                            <!-- Campo Candidato (para todos los roles excepto el candidato mismo) -->
+                            @if(!$this->es_rol_candidato && $role_id)
+                            <div class="col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Candidato asignado</label>
+                                <select wire:model="candidato_id"
+                                        class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Sin candidato asignado</option>
+                                    @foreach($candidatos as $candidato)
+                                        <option value="{{ $candidato->id }}">{{ $candidato->usuario->name }}{{ $candidato->partido ? ' (' . $candidato->partido . ')' : '' }}</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Candidato al que pertenece este usuario</p>
+                            </div>
+                            @endif
+
+                            <!-- Campo Partido (solo para candidatos) -->
+                            @if($this->es_rol_candidato)
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Partido político</label>
+                                <input type="text" wire:model="partido" placeholder="Ej: Partido Colorado"
+                                       class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            @endif
 
                             <!-- Campos de contraseña (ocultar solo para rol líder) -->
                             @if(!$this->es_rol_lider)

@@ -35,12 +35,12 @@ require __DIR__.'/auth.php';
 
 // Protected Routes
 Route::middleware(['auth'])->group(function () {
-    // Dashboard (solo admin)
+    // Dashboard (admin y candidato)
     Route::get('/dashboard', Dashboard::class)
         ->middleware('admin')
         ->name('dashboard');
-    
-    // Leader Dashboard (solo admin)
+
+    // Leader Dashboard (admin y candidato)
     Route::get('/lider/dashboard', LeaderDashboard::class)
         ->middleware('admin')
         ->name('lider.dashboard');

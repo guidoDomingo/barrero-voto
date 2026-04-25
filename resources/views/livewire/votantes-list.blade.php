@@ -349,7 +349,16 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                {{ $votante->lider->usuario->name ?? '-' }}
+                                @if($votante->lider && $votante->lider->usuario)
+                                    <div>{{ $votante->lider->usuario->name }}</div>
+                                    @if($votante->lider->candidato && $votante->lider->candidato->usuario)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 mt-0.5">
+                                            {{ $votante->lider->candidato->usuario->name }}
+                                        </span>
+                                    @endif
+                                @else
+                                    <span class="text-gray-400">Sin asignar</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
@@ -398,34 +407,73 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div class="flex gap-2">
-                                    @if(!$votante->ya_voto && auth()->user()->puedeMarcarVotos())
-                                        <button wire:click="marcarVoto({{ $votante->id }})" 
-                                                wire:confirm="¿Confirmar que este votante ya votó?"
-                                                class="text-green-600 hover:text-green-900" title="Marcar voto">
-                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                @php
+                                    $authUser = auth()->user();
+                                    $reclamado = $votante->lider_asignado_id && $votante->lider && $votante->lider->candidato_id;
+                                    $esPropietario = $authUser->esAdmin() ||
+                                        ($authUser->esCandidato() && $authUser->candidato &&
+                                         $reclamado && $votante->lider->candidato_id === $authUser->candidato->id) ||
+                                        ($authUser->esLider() && $authUser->lider &&
+                                         $votante->lider_asignado_id === $authUser->lider->id) ||
+                                        (($authUser->esVeedor() || $authUser->esPcMovil()) && $authUser->candidato_id &&
+                                         $reclamado && $votante->lider->candidato_id === $authUser->candidato_id);
+                                    $puedeLiberar = $reclamado && ($authUser->esAdmin() ||
+                                        ($authUser->esCandidato() && $authUser->candidato &&
+                                         $votante->lider->candidato_id === $authUser->candidato->id));
+                                    $puedeEditar = !$reclamado || $esPropietario;
+                                    // Veedor y PC móvil solo interactúan con votantes de su candidato
+                                    $puedeInteractuar = $candidatoLiderIds === null ||
+                                        ($votante->lider_asignado_id && $candidatoLiderIds->contains($votante->lider_asignado_id));
+                                @endphp
+                                <div class="flex gap-2 items-center">
+                                    @if($reclamado && !$esPropietario)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700" title="Asignado a otro candidato">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
                                             </svg>
-                                        </button>
+                                            Ocupado
+                                        </span>
+                                    @elseif(!$puedeInteractuar)
+                                        <span class="text-xs text-gray-400" title="Votante de otro candidato">—</span>
+                                    @else
+                                        @if(!$votante->ya_voto && $authUser->puedeMarcarVotos())
+                                            <button wire:click="marcarVoto({{ $votante->id }})"
+                                                    wire:confirm="¿Confirmar que este votante ya votó?"
+                                                    class="text-green-600 hover:text-green-900" title="Marcar voto">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        @endif
+
+                                        @if($authUser->puedeUsarPcMovil() && !$authUser->esVeedor())
+                                            <button wire:click="marcarPcMovil({{ $votante->id }})"
+                                                    wire:confirm="¿Cambiar el estado de PC móvil para este votante?"
+                                                    class="text-blue-600 hover:text-blue-900"
+                                                    title="{{ $votante->paso_por_pc_movil ? 'Marcar como NO pasó por PC móvil' : 'Marcar como pasó por PC móvil' }}">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9 12a1 1 0 102 0V8a1 1 0 10-2 0v4zm1-10C4.477 2 0 6.477 0 12s4.477 10 10 10 10-4.477 10-10S15.523 2 10 2zm0 18a8 8 0 110-16 8 8 0 010 16z"></path>
+                                                </svg>
+                                            </button>
+                                        @endif
+
+                                        @if($puedeEditar && ($authUser->puedeCrearVotantes() || $authUser->esAdmin()) && !$authUser->esVeedor())
+                                            <a href="{{ route('votantes.edit', $votante->id) }}" class="text-purple-600 hover:text-purple-900" title="Editar">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
+                                                </svg>
+                                            </a>
+                                        @endif
                                     @endif
 
-                                    @if(auth()->user()->puedeUsarPcMovil() && !auth()->user()->esVeedor())
-                                        <button wire:click="marcarPcMovil({{ $votante->id }})" 
-                                                wire:confirm="¿Cambiar el estado de PC móvil para este votante?"
-                                                class="text-blue-600 hover:text-blue-900" 
-                                                title="{{ $votante->paso_por_pc_movil ? 'Marcar como NO pasó por PC móvil' : 'Marcar como pasó por PC móvil' }}">
+                                    @if($puedeLiberar)
+                                        <button wire:click="liberarVotante({{ $votante->id }})"
+                                                wire:confirm="¿Liberar este votante? Quedará sin líder asignado."
+                                                class="text-orange-500 hover:text-orange-700" title="Liberar votante">
                                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M9 12a1 1 0 102 0V8a1 1 0 10-2 0v4zm1-10C4.477 2 0 6.477 0 12s4.477 10 10 10 10-4.477 10-10S15.523 2 10 2zm0 18a8 8 0 110-16 8 8 0 010 16z"></path>
+                                                <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z"></path>
                                             </svg>
                                         </button>
-                                    @endif
-                                    
-                                    @if((auth()->user()->puedeCrearVotantes() || auth()->user()->esAdmin()) && !auth()->user()->esVeedor())
-                                        <a href="{{ route('votantes.edit', $votante->id) }}" class="text-purple-600 hover:text-purple-900" title="Editar">
-                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"></path>
-                                            </svg>
-                                        </a>
                                     @endif
                                 </div>
                             </td>
@@ -605,12 +653,41 @@
                     @endif
 
                     <!-- Líder Asignado -->
+                    @php
+                        $authUser = auth()->user();
+                        $reclamadoM = $votante->lider_asignado_id && $votante->lider && $votante->lider->candidato_id;
+                        $esPropietarioM = $authUser->esAdmin() ||
+                            ($authUser->esCandidato() && $authUser->candidato &&
+                             $reclamadoM && $votante->lider->candidato_id === $authUser->candidato->id) ||
+                            ($authUser->esLider() && $authUser->lider &&
+                             $votante->lider_asignado_id === $authUser->lider->id) ||
+                            (($authUser->esVeedor() || $authUser->esPcMovil()) && $authUser->candidato_id &&
+                             $reclamadoM && $votante->lider->candidato_id === $authUser->candidato_id);
+                        $puedeLiberarM = $reclamadoM && ($authUser->esAdmin() ||
+                            ($authUser->esCandidato() && $authUser->candidato &&
+                             $votante->lider->candidato_id === $authUser->candidato->id));
+                        $puedeInteractuarM = $candidatoLiderIds === null ||
+                            ($votante->lider_asignado_id && $candidatoLiderIds->contains($votante->lider_asignado_id));
+                    @endphp
                     @if($votante->lider && $votante->lider->usuario)
                         <div class="mb-3">
                             <div class="flex items-center justify-between p-2 bg-purple-50 border border-purple-200 rounded">
                                 <span class="text-sm font-semibold text-purple-700">👥 Líder Asignado:</span>
-                                <span class="text-sm font-bold text-purple-800">{{ $votante->lider->usuario->name }}</span>
+                                <div class="text-right">
+                                    <div class="text-sm font-bold text-purple-800">{{ $votante->lider->usuario->name }}</div>
+                                    @if($votante->lider->candidato && $votante->lider->candidato->usuario)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            {{ $votante->lider->candidato->usuario->name }}
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
+                            @if($reclamadoM && !$esPropietarioM)
+                                <div class="mt-1 flex items-center gap-1 text-xs text-red-600 font-medium">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path></svg>
+                                    Asignado a otro candidato — solo editable por su propietario
+                                </div>
+                            @endif
                         </div>
                     @endif
 
@@ -649,41 +726,56 @@
 
                     <!-- Botones de Acción Mejorados -->
                     <div class="mt-4 border-t pt-3 space-y-2">
-                        <!-- Botón PC Móvil (para usuarios con permisos PC móvil, excepto veedores) -->
-                        @if(auth()->user()->puedeUsarPcMovil() && !auth()->user()->esVeedor())
-                            <button wire:click="marcarPcMovil({{ $votante->id }})" 
-                                    wire:confirm="¿Cambiar el estado de PC móvil para este votante?"
-                                    class="w-full px-4 py-3 text-sm font-bold rounded-lg transition-all
-                                        @if($votante->paso_por_pc_movil) 
-                                            bg-green-600 text-white hover:bg-green-700
-                                        @else 
-                                            bg-blue-600 text-white hover:bg-blue-700
-                                        @endif">
-                                @if($votante->paso_por_pc_movil)
-                                    ✓ Ya pasó por PC Móvil - Marcar NO
-                                @else
-                                    📱 Marcar paso por PC Móvil
-                                @endif
-                            </button>
+                        @if($reclamadoM && !$esPropietarioM)
+                            <div class="w-full px-4 py-3 text-sm font-bold text-center rounded-lg bg-red-50 border border-red-200 text-red-700">
+                                🔒 Votante asignado a otro candidato
+                            </div>
+                        @elseif(!$puedeInteractuarM)
+                            <div class="w-full px-4 py-3 text-sm text-center rounded-lg bg-gray-50 border border-gray-200 text-gray-500">
+                                Solo podés actuar sobre votantes de tu candidato
+                            </div>
+                        @else
+                            @if($authUser->puedeUsarPcMovil() && !$authUser->esVeedor())
+                                <button wire:click="marcarPcMovil({{ $votante->id }})"
+                                        wire:confirm="¿Cambiar el estado de PC móvil para este votante?"
+                                        class="w-full px-4 py-3 text-sm font-bold rounded-lg transition-all
+                                            @if($votante->paso_por_pc_movil)
+                                                bg-green-600 text-white hover:bg-green-700
+                                            @else
+                                                bg-blue-600 text-white hover:bg-blue-700
+                                            @endif">
+                                    @if($votante->paso_por_pc_movil)
+                                        ✓ Ya pasó por PC Móvil - Marcar NO
+                                    @else
+                                        📱 Marcar paso por PC Móvil
+                                    @endif
+                                </button>
+                            @endif
+
+                            @if(!$votante->ya_voto && $authUser->puedeMarcarVotos())
+                                <button wire:click="marcarVoto({{ $votante->id }})"
+                                        wire:confirm="¿Confirmar que este votante ya votó?"
+                                        class="w-full px-4 py-3 text-sm font-bold text-white rounded-lg transition-all hover:bg-green-700"
+                                        style="background-color: #059669 !important;">
+                                    ✓ Marcar que YA VOTÓ
+                                </button>
+                            @endif
+
+                            @if(($authUser->puedeCrearVotantes() || $authUser->esAdmin()) && !$authUser->esVeedor())
+                                <a href="{{ route('votantes.edit', $votante->id) }}"
+                                   class="block w-full px-4 py-2 text-white text-center rounded-lg transition-all text-sm font-medium hover:bg-purple-700"
+                                   style="background-color: #7c3aed !important;">
+                                    ✏️ Editar Información
+                                </a>
+                            @endif
                         @endif
 
-                        <!-- Botón Marcar Voto (para usuarios con permisos de voto) -->
-                        @if(!$votante->ya_voto && auth()->user()->puedeMarcarVotos())
-                            <button wire:click="marcarVoto({{ $votante->id }})" 
-                                    wire:confirm="¿Confirmar que este votante ya votó?"
-                                    class="w-full px-4 py-3 text-sm font-bold text-white rounded-lg transition-all hover:bg-green-700"
-                                    style="background-color: #059669 !important;">
-                                ✓ Marcar que YA VOTÓ
+                        @if($puedeLiberarM)
+                            <button wire:click="liberarVotante({{ $votante->id }})"
+                                    wire:confirm="¿Liberar este votante? Quedará sin líder asignado."
+                                    class="w-full px-4 py-2 text-sm font-bold text-white rounded-lg bg-orange-500 hover:bg-orange-600 transition-all">
+                                🔓 Liberar votante
                             </button>
-                        @endif
-                        
-                        <!-- Botón Editar (no para veedores) -->
-                        @if((auth()->user()->puedeCrearVotantes() || auth()->user()->esAdmin()) && !auth()->user()->esVeedor())
-                            <a href="{{ route('votantes.edit', $votante->id) }}" 
-                               class="block w-full px-4 py-2 text-white text-center rounded-lg transition-all text-sm font-medium hover:bg-purple-700"
-                               style="background-color: #7c3aed !important;">
-                                ✏️ Editar Información
-                            </a>
                         @endif
                     </div>
                 </div>

@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'role_id',
+        'candidato_id',
         'telefono',
         'ci',
         'activo',
@@ -64,6 +65,22 @@ class User extends Authenticatable
     public function lider()
     {
         return $this->hasOne(Lider::class, 'usuario_id');
+    }
+
+    /**
+     * Relación con candidato (si el usuario es candidato)
+     */
+    public function candidato()
+    {
+        return $this->hasOne(Candidato::class, 'user_id');
+    }
+
+    /**
+     * Candidato al que este usuario pertenece (para líderes, veedores, PC móvil, etc.)
+     */
+    public function candidatoAsignado()
+    {
+        return $this->belongsTo(Candidato::class, 'candidato_id');
     }
 
     /**
@@ -131,6 +148,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Verificar si es candidato
+     */
+    public function esCandidato(): bool
+    {
+        return $this->tieneRol('candidato');
+    }
+
+    /**
      * Verificar si es líder
      */
     public function esLider(): bool
@@ -155,11 +180,12 @@ class User extends Authenticatable
     }
 
     /**
-     * Verificar si puede marcar votos
+     * Verificar si puede marcar votos (solo admin y veedor)
      */
     public function puedeMarcarVotos(): bool
     {
-        return $this->tienePermiso('votantes.marcar_voto') || $this->esAdmin();
+        if ($this->esPcMovil()) return false;
+        return $this->esAdmin() || $this->esVeedor() || $this->tienePermiso('votantes.marcar_voto');
     }
 
     /**
@@ -227,6 +253,72 @@ class User extends Authenticatable
     public function esVoluntario(): bool
     {
         return $this->tieneRol('voluntario');
+    }
+
+    /**
+     * IDs de líderes propios del usuario (para filtros de dashboard/métricas).
+     * null = sin restricción (admin), colección vacía = sin acceso.
+     */
+    public function liderIdsPropios(): ?\Illuminate\Support\Collection
+    {
+        if ($this->esAdmin()) {
+            return null;
+        }
+
+        if ($this->esCandidato()) {
+            $this->load('candidato.lideres');
+            return $this->candidato
+                ? $this->candidato->lideres->pluck('id')
+                : collect();
+        }
+
+        if ($this->esLider() && $this->lider) {
+            return collect([$this->lider->id]);
+        }
+
+        return collect();
+    }
+
+    /**
+     * IDs de líderes para filtros de listas (votantes, viajes, visitas).
+     * Retorna null para todos los roles con acceso (todos ven todos los votantes).
+     * Solo restringe a usuarios sin rol válido.
+     */
+    public function liderIdsParaListas(): ?\Illuminate\Support\Collection
+    {
+        if ($this->esAdmin() || $this->esCandidato() || $this->esVeedor() || $this->esPcMovil()) {
+            return null; // sin restricción — ven todos
+        }
+
+        if ($this->esLider() && $this->lider) {
+            return null; // líderes también ven todos
+        }
+
+        return collect(); // sin rol válido — sin acceso
+    }
+
+    /**
+     * IDs de líderes propios para precargar el filtro al entrar.
+     * Líderes → sus propios IDs. Candidatos → IDs de sus líderes. Admin → null.
+     */
+    public function liderIdsFiltroDefault(): ?\Illuminate\Support\Collection
+    {
+        if ($this->esAdmin()) {
+            return null;
+        }
+
+        if ($this->esCandidato()) {
+            $this->load('candidato.lideres');
+            return $this->candidato
+                ? $this->candidato->lideres->pluck('id')
+                : collect();
+        }
+
+        if ($this->esLider() && $this->lider) {
+            return collect([$this->lider->id]);
+        }
+
+        return null;
     }
 
     /**

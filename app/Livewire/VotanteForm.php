@@ -110,10 +110,14 @@ class VotanteForm extends Component
         if ($votanteId) {
             $this->cargarVotante($votanteId);
         } else {
-            // Asignar líder por defecto si el usuario es líder
             $user = Auth::user();
             if ($user->esLider() && $user->lider) {
                 $this->lider_asignado_id = $user->lider->id;
+            } elseif ($user->esCandidato() && $user->candidato) {
+                $lideres = $user->candidato->lideres;
+                if ($lideres->count() === 1) {
+                    $this->lider_asignado_id = $lideres->first()->id;
+                }
             }
         }
     }
@@ -208,11 +212,16 @@ class VotanteForm extends Component
                 $this->buscandoDatos = false;
                 $this->mensajeBusqueda = '✅ Votante encontrado en la base de datos local - Datos cargados automáticamente';
                 
-                // Si no tenemos líder asignado y el usuario es líder, asignar automáticamente
+                // Si no tenemos líder asignado, asignar según rol
                 if (!$this->lider_asignado_id) {
                     $user = Auth::user();
                     if ($user->esLider() && $user->lider) {
                         $this->lider_asignado_id = $user->lider->id;
+                    } elseif ($user->esCandidato() && $user->candidato) {
+                        $lideres = $user->candidato->lideres;
+                        if ($lideres->count() === 1) {
+                            $this->lider_asignado_id = $lideres->first()->id;
+                        }
                     }
                 }
                 
@@ -464,7 +473,16 @@ class VotanteForm extends Component
 
     public function render()
     {
-        $lideres = Lider::with('usuario')->get();
+        $user = Auth::user();
+        $liderIds = $user->liderIdsPropios();
+
+        if ($liderIds === null) {
+            $lideres = Lider::with('usuario')->get();
+        } elseif ($liderIds->isNotEmpty()) {
+            $lideres = Lider::with('usuario')->whereIn('id', $liderIds)->get();
+        } else {
+            $lideres = collect();
+        }
 
         return view('livewire.votante-form', [
             'lideres' => $lideres,

@@ -31,7 +31,7 @@ class VoterImportService
      */
     public function importar(
         string $filePath,
-        int $liderAsignadoId,
+        ?int $liderAsignadoId,
         int $usuarioId,
         bool $actualizarDuplicados = false
     ): array {
@@ -143,7 +143,7 @@ class VoterImportService
      */
     private function procesarDatos(
         array $datos,
-        int $liderAsignadoId,
+        ?int $liderAsignadoId,
         int $usuarioId,
         bool $actualizarDuplicados
     ): void {
@@ -329,7 +329,7 @@ class VoterImportService
      * @param int $liderAsignadoId
      * @param int $usuarioId
      */
-    private function crearVotante(array $datos, int $liderAsignadoId, int $usuarioId): void
+    private function crearVotante(array $datos, ?int $liderAsignadoId, int $usuarioId): void
     {
         $datos['lider_asignado_id'] = $liderAsignadoId;
         $datos['creado_por_usuario_id'] = $usuarioId;

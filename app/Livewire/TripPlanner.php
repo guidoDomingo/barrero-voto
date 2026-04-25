@@ -290,9 +290,17 @@ class TripPlanner extends Component
 
     private function obtenerVotantesDisponibles()
     {
+        $user = Auth::user();
+        $accesoIds = $user->liderIdsParaListas();
+
         $query = Votante::query()
             ->where('necesita_transporte', true)
             ->where('ya_voto', false);
+
+        // Sin acceso = colección vacía
+        if ($accesoIds !== null && $accesoIds->isEmpty()) {
+            $query->whereRaw('1 = 0');
+        }
 
         if ($this->lider_id) {
             $query->where('lider_asignado_id', $this->lider_id);

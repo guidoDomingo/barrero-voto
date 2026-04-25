@@ -151,7 +151,7 @@
                     <!-- Líder Assignment -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Asignar a Líder *</label>
-                        <select wire:model="lider_asignado_id" required 
+                        <select wire:model="lider_asignado_id"  
                                 wire:loading.attr="disabled"
                             class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
                             <option value="">Seleccione un líder</option>

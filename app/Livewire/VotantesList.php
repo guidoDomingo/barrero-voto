@@ -71,17 +71,37 @@ class VotantesList extends Component
         $this->showModal = true;
     }
 
+    private function puedeActuarSobreVotante(Votante $votante): bool
+    {
+        $user = Auth::user();
+        if ($user->esAdmin() || $user->esCandidato() || $user->esLider()) {
+            return true;
+        }
+        // Veedor y PC móvil: solo sobre votantes del candidato asignado
+        if (($user->esVeedor() || $user->esPcMovil()) && $user->candidato_id) {
+            $liderIds = \App\Models\Candidato::find($user->candidato_id)
+                ?->lideres()->pluck('lideres.id') ?? collect();
+            return $votante->lider_asignado_id && $liderIds->contains($votante->lider_asignado_id);
+        }
+        return false;
+    }
+
     public function marcarVoto($id)
     {
         $user = Auth::user();
-        
-        // Verificar si el usuario tiene permisos para marcar votos
+
         if (!$user->puedeMarcarVotos()) {
             session()->flash('error', 'No tienes permisos para marcar votos.');
             return;
         }
-        
+
         $votante = Votante::findOrFail($id);
+
+        if (!$this->puedeActuarSobreVotante($votante)) {
+            session()->flash('error', 'Solo podés marcar votantes de tu candidato.');
+            return;
+        }
+
         $votante->ya_voto = true;
         $votante->voto_registrado_en = now();
         $votante->save();
@@ -93,16 +113,21 @@ class VotantesList extends Component
     public function marcarPcMovil($id)
     {
         $user = Auth::user();
-        
-        // Verificar si el usuario tiene permisos (no debe ser veedor y debe poder usar PC móvil)
+
         if (!$user->puedeUsarPcMovil() || $user->esVeedor()) {
             session()->flash('error', 'No tienes permisos para registrar PC móvil.');
             return;
         }
-        
+
         $votante = Votante::findOrFail($id);
-        $votante->paso_por_pc_movil = !$votante->paso_por_pc_movil; // Toggle
-        
+
+        if (!$this->puedeActuarSobreVotante($votante)) {
+            session()->flash('error', 'Solo podés registrar PC móvil para votantes de tu candidato.');
+            return;
+        }
+
+        $votante->paso_por_pc_movil = !$votante->paso_por_pc_movil;
+
         if ($votante->paso_por_pc_movil) {
             $votante->fecha_paso_pc_movil = now();
             $mensaje = 'Paso por PC móvil registrado exitosamente.';
@@ -110,7 +135,7 @@ class VotantesList extends Component
             $votante->fecha_paso_pc_movil = null;
             $mensaje = 'Paso por PC móvil removido exitosamente.';
         }
-        
+
         $votante->save();
 
         $this->dispatch('votante-actualizado');
@@ -122,6 +147,25 @@ class VotantesList extends Component
         Votante::findOrFail($id)->delete();
         $this->dispatch('votante-eliminado');
         session()->flash('message', 'Votante eliminado exitosamente.');
+    }
+
+    public function liberarVotante($id)
+    {
+        $user = Auth::user();
+        $votante = Votante::with('lider.candidato')->findOrFail($id);
+
+        $esPropietario = $user->esCandidato() && $user->candidato &&
+            $votante->lider && $votante->lider->candidato_id === $user->candidato->id;
+
+        if (!$user->esAdmin() && !$esPropietario) {
+            session()->flash('error', 'No tienes permiso para liberar este votante.');
+            return;
+        }
+
+        $votante->lider_asignado_id = null;
+        $votante->save();
+
+        session()->flash('message', 'Votante liberado correctamente.');
     }
 
     public function exportarExcel()
@@ -170,16 +214,9 @@ class VotantesList extends Component
         $user = Auth::user();
         $query = Votante::query()->with('lider.usuario');
 
-        // Aplicar filtros de permisos de usuario
-        if ($user->esAdmin()) {
-            // Los admins ven todos los votantes
-        } elseif ($user->esLider() && $user->lider) {
-            $query->where('lider_asignado_id', $user->lider->id);
-        } elseif ($user->esVeedor()) {
-            // Los veedores pueden ver todos
-        } elseif ($user->esPcMovil()) {
-            // Los operadores PC móvil pueden ver todos
-        } else {
+        // Todos los roles con acceso ven todos los votantes
+        $accesoIds = $user->liderIdsParaListas();
+        if ($accesoIds !== null && $accesoIds->isEmpty()) {
             $query->whereRaw('1 = 0');
         }
 
@@ -301,23 +338,12 @@ class VotantesList extends Component
     public function render()
     {
         $user = Auth::user();
-        $query = Votante::query()->with('lider.usuario');
+        $query = Votante::query()->with(['lider.usuario', 'lider.candidato.usuario']);
 
-        // Filtrar según el rol del usuario
-        if ($user->esAdmin()) {
-            // Los admins ven todos los votantes sin restricciones
-        } elseif ($user->esLider() && $user->lider) {
-            // Los líderes solo ven sus propios votantes
-            $query->where('lider_asignado_id', $user->lider->id);
-        } elseif ($user->esVeedor()) {
-            // Los veedores pueden ver todos los votantes pero no modificarlos
-            // No aplicamos filtro adicional
-        } elseif ($user->esPcMovil()) {
-            // Los operadores PC móvil ven todos los votantes
-            // No aplicamos filtro adicional
-        } else {
-            // Si no tiene ningún rol válido, no puede ver votantes
-            $query->whereRaw('1 = 0'); // Consulta que no devuelve resultados
+        // Todos los roles con acceso ven todos los votantes; sin rol válido → nada
+        $accesoIds = $user->liderIdsParaListas();
+        if ($accesoIds !== null && $accesoIds->isEmpty()) {
+            $query->whereRaw('1 = 0');
         }
 
         // Búsqueda
@@ -385,7 +411,7 @@ class VotantesList extends Component
             $votantes = $query->paginate($this->perPage);
         }
 
-        // Obtener líderes para filtro
+        // Dropdown de líderes: todos los líderes para el filtro (opcional)
         $lideres = Lider::with('usuario')->get();
 
         // Obtener distritos únicos para filtro
@@ -395,10 +421,23 @@ class VotantesList extends Component
                             ->sort()
                             ->values();
 
+        // IDs de líderes del candidato asignado al usuario (solo para veedor y PC móvil)
+        // null = sin restricción, colección vacía = no puede interactuar con nadie
+        $candidatoLiderIds = null;
+        if ($user->esVeedor() || $user->esPcMovil()) {
+            if ($user->candidato_id) {
+                $candidatoLiderIds = \App\Models\Candidato::find($user->candidato_id)
+                    ?->lideres()->pluck('lideres.id') ?? collect();
+            } else {
+                $candidatoLiderIds = collect();
+            }
+        }
+
         return view('livewire.votantes-list', [
             'votantes' => $votantes,
             'lideres' => $lideres,
             'distritos' => $distritos,
+            'candidatoLiderIds' => $candidatoLiderIds,
         ])->layout('layouts.app');
     }
 }

@@ -43,7 +43,7 @@ class MetricsService
         $noPasaronPorPc = $totalVotantes - $pasaronPorPc;
 
         // Votos por líder
-        $votosPorLider = Lider::with('usuario')
+        $votosPorLider = Lider::with('usuario', 'candidato.usuario')
             ->withCount([
                 'votantes as total_votantes',
                 'votantes as votantes_que_votaron' => function($query) {

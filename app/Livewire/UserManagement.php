@@ -7,6 +7,7 @@ use Livewire\WithPagination;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Lider;
+use App\Models\Candidato;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
@@ -34,6 +35,9 @@ class UserManagement extends Component
     public $telefono = '';
     public $ci = '';
     public $activo = true;
+    public $candidato_id = ''; // para asignar líder a candidato
+    public $partido = '';      // para candidato
+    public $tiene_perfil_lider = false; // para mostrar el campo candidato al editar
 
     protected function rules()
     {
@@ -85,9 +89,15 @@ class UserManagement extends Component
     public function getEsRolLiderProperty()
     {
         if (!$this->role_id) return false;
-        
         $role = Role::find($this->role_id);
         return $role && $role->slug === 'lider';
+    }
+
+    public function getEsRolCandidatoProperty()
+    {
+        if (!$this->role_id) return false;
+        $role = Role::find($this->role_id);
+        return $role && $role->slug === 'candidato';
     }
 
     public function updatingSearch()
@@ -103,7 +113,7 @@ class UserManagement extends Component
 
     public function nuevoUsuario()
     {
-        $this->reset(['name', 'email', 'password', 'password_confirmation', 'role_id', 'telefono', 'ci', 'activo']);
+        $this->reset(['name', 'email', 'password', 'password_confirmation', 'role_id', 'telefono', 'ci', 'activo', 'candidato_id', 'partido', 'tiene_perfil_lider']);
         $this->editingUser = false;
         $this->userId = null;
         $this->activo = true;
@@ -112,8 +122,8 @@ class UserManagement extends Component
 
     public function editarUsuario($id)
     {
-        $user = User::findOrFail($id);
-        
+        $user = User::with('lider', 'candidato')->findOrFail($id);
+
         $this->userId = $user->id;
         $this->name = $user->name;
         $this->email = $user->email;
@@ -123,7 +133,11 @@ class UserManagement extends Component
         $this->activo = $user->activo;
         $this->password = '';
         $this->password_confirmation = '';
-        
+        // Para líderes leer de lideres.candidato_id, para el resto de users.candidato_id
+        $this->candidato_id = $user->lider?->candidato_id ?? $user->candidato_id ?? '';
+        $this->partido = $user->candidato?->partido ?? '';
+        $this->tiene_perfil_lider = $user->lider !== null;
+
         $this->editingUser = true;
         $this->showModal = true;
     }
@@ -141,6 +155,7 @@ class UserManagement extends Component
                     'name' => $this->name,
                     'email' => $this->email,
                     'role_id' => $this->role_id,
+                    'candidato_id' => $this->candidato_id ?: null,
                     'telefono' => $this->telefono,
                     'ci' => $this->ci,
                     'activo' => $this->activo,
@@ -157,10 +172,27 @@ class UserManagement extends Component
                         Lider::create([
                             'usuario_id' => $user->id,
                             'territorio' => 'Por asignar',
-                            'telefono' => $this->telefono,
-                            'direccion' => 'Por definir',
+                            'candidato_id' => $this->candidato_id ?: null,
                         ]);
                     }
+                    if ($newRole && $newRole->slug === 'candidato' && !$user->candidato) {
+                        Candidato::create([
+                            'user_id' => $user->id,
+                            'partido' => $this->partido ?: null,
+                        ]);
+                    }
+                }
+
+                // Actualizar candidato_id del líder existente
+                $lider = $user->fresh()->lider;
+                if ($lider) {
+                    $lider->update(['candidato_id' => $this->candidato_id ?: null]);
+                }
+
+                // Actualizar partido del candidato existente
+                $candidatoRecord = $user->fresh()->candidato;
+                if ($candidatoRecord) {
+                    $candidatoRecord->update(['partido' => $this->partido ?: null]);
                 }
 
                 session()->flash('message', 'Usuario actualizado exitosamente.');
@@ -179,6 +211,7 @@ class UserManagement extends Component
                     'email' => $this->email,
                     'password' => Hash::make($password),
                     'role_id' => $this->role_id,
+                    'candidato_id' => $this->candidato_id ?: null,
                     'telefono' => $this->telefono,
                     'ci' => $this->ci,
                     'activo' => $this->activo,
@@ -186,18 +219,23 @@ class UserManagement extends Component
 
                 // Si es líder, crear registro de líder automáticamente
                 $role = Role::find($this->role_id);
+                $mensajeExtra = '';
+
                 if ($role && $role->slug === 'lider') {
                     Lider::create([
                         'usuario_id' => $user->id,
                         'territorio' => 'Por asignar',
-                        'telefono' => $this->telefono,
-                        'direccion' => 'Por definir',
+                        'candidato_id' => $this->candidato_id ?: null,
                     ]);
+                    $mensajeExtra = ' Se creó automáticamente el perfil de líder.';
                 }
 
-                $mensajeExtra = '';
-                if ($role && $role->slug === 'lider') {
-                    $mensajeExtra = ' Se creó automáticamente el perfil de líder y contraseña.';
+                if ($role && $role->slug === 'candidato') {
+                    Candidato::create([
+                        'user_id' => $user->id,
+                        'partido' => $this->partido ?: null,
+                    ]);
+                    $mensajeExtra = ' Se creó automáticamente el perfil de candidato.';
                 }
 
                 session()->flash('message', 'Usuario creado exitosamente.' . $mensajeExtra);
@@ -252,7 +290,7 @@ class UserManagement extends Component
     public function cerrarModal()
     {
         $this->showModal = false;
-        $this->reset(['name', 'email', 'password', 'password_confirmation', 'role_id', 'telefono', 'ci', 'activo']);
+        $this->reset(['name', 'email', 'password', 'password_confirmation', 'role_id', 'telefono', 'ci', 'activo', 'candidato_id', 'partido', 'tiene_perfil_lider']);
         $this->editingUser = false;
         $this->userId = null;
         $this->resetErrorBag();
@@ -260,7 +298,7 @@ class UserManagement extends Component
 
     public function render()
     {
-        $query = User::with('role')->orderBy('created_at', 'desc');
+        $query = User::with(['role', 'lider.candidato.usuario', 'candidatoAsignado.usuario'])->orderBy('created_at', 'desc');
 
         // Búsqueda
         if ($this->search) {
@@ -283,10 +321,12 @@ class UserManagement extends Component
 
         $usuarios = $query->paginate($this->perPage);
         $roles = Role::all();
+        $candidatos = Candidato::with('usuario')->where('activo', true)->get();
 
         return view('livewire.user-management', [
             'usuarios' => $usuarios,
             'roles' => $roles,
+            'candidatos' => $candidatos,
         ])->layout('layouts.app');
     }
 }

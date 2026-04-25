@@ -15,7 +15,8 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || (!auth()->user()->esAdmin() && !auth()->user()->esPcMovil())) {
+        $user = auth()->user();
+        if (!$user || (!$user->esAdmin() && !$user->esPcMovil() && !$user->esCandidato())) {
             abort(403, 'No tienes permisos para acceder a esta sección.');
         }
 

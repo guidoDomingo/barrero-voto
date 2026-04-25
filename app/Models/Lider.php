@@ -20,6 +20,7 @@ class Lider extends Model
         'longitud',
         'coordinador_id',
         'activo',
+        'candidato_id',
     ];
 
     protected $casts = [
@@ -35,6 +36,14 @@ class Lider extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'usuario_id');
+    }
+
+    /**
+     * Relación con candidato al que pertenece
+     */
+    public function candidato()
+    {
+        return $this->belongsTo(Candidato::class, 'candidato_id');
     }
 
     /**

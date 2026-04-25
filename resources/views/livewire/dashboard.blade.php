@@ -135,6 +135,7 @@
                     <thead>
                         <tr class="border-b border-gray-200">
                             <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Líder</th>
+                            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Candidato</th>
                             <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Votantes</th>
                             <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Votaron</th>
                             <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2">% Votos</th>
@@ -150,17 +151,26 @@
                                     <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm mr-2">
                                         {{ strtoupper(substr($lider->usuario->name, 0, 1)) }}
                                     </div>
-                                    <div class="text-sm font-medium text-gray-900 truncate max-w-32">
+                                    <div class="text-sm font-medium text-gray-900 truncate max-w-28">
                                         {{ $lider->usuario->name }}
                                     </div>
                                 </div>
+                            </td>
+                            <td class="py-2 pr-3">
+                                @if($lider->candidato)
+                                    <span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 font-medium">
+                                        {{ $lider->candidato->usuario->name }}
+                                    </span>
+                                @else
+                                    <span class="text-xs text-gray-400 italic">Sin candidato</span>
+                                @endif
                             </td>
                             <td class="text-right py-2 text-sm text-gray-900">{{ $lider->total_votantes }}</td>
                             <td class="text-right py-2 text-sm font-semibold text-green-600">{{ $lider->votantes_que_votaron }}</td>
                             <td class="text-right py-2 text-sm text-gray-600">
                                 {{ $lider->total_votantes > 0 ? number_format(($lider->votantes_que_votaron / $lider->total_votantes) * 100, 1) : 0 }}%
                             </td>
-                            <td class="text-right py-2 text-sm text-blue-600">{{ $lider->votos_con_pc }}</td>
+                            <td class="text-right py-2 text-sm text-blue-600">{{ $lider->votantes_con_pc }}</td>
                             <td class="text-right py-2 text-sm text-indigo-600">
                                 {{ $lider->votantes_con_pc > 0 ? number_format(($lider->votos_con_pc / $lider->votantes_con_pc) * 100, 0) : 0 }}%
                             </td>
@@ -197,6 +207,53 @@
         </div>
         @endif
     </div>
+
+    <!-- Resumen por Candidato (solo admin) -->
+    @if(count($candidatosResumen ?? []) > 0)
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Resumen por Candidato</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Candidato</th>
+                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Partido</th>
+                        <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Líderes</th>
+                        <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Total Votantes</th>
+                        <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Ya Votaron</th>
+                        <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Progreso</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach($candidatosResumen as $c)
+                    <tr>
+                        <td class="py-3 pr-6">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold text-sm mr-2">
+                                    {{ strtoupper(substr($c['nombre'], 0, 1)) }}
+                                </div>
+                                <span class="text-sm font-semibold text-gray-900">{{ $c['nombre'] }}</span>
+                            </div>
+                        </td>
+                        <td class="py-3 pr-6 text-sm text-gray-600">{{ $c['partido'] ?: '—' }}</td>
+                        <td class="py-3 pr-6 text-right text-sm text-gray-900 font-medium">{{ $c['lideres'] }}</td>
+                        <td class="py-3 pr-6 text-right text-sm text-gray-900">{{ number_format($c['total_votantes']) }}</td>
+                        <td class="py-3 pr-6 text-right text-sm font-semibold text-green-600">{{ number_format($c['ya_votaron']) }}</td>
+                        <td class="py-3 min-w-40">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: {{ $c['porcentaje'] }}%"></div>
+                                </div>
+                                <span class="text-xs text-gray-600 w-10 text-right">{{ $c['porcentaje'] }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
     <!-- Tables Row -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
