@@ -119,15 +119,17 @@ class VoterImportService
             return [];
         }
 
-        $encabezados = array_map('trim', array_shift($filas));
+        $encabezados = array_map(fn($encabezado) => trim((string) $encabezado), array_shift($filas));
         $datos = [];
 
         foreach ($filas as $fila) {
-            if (count($fila) >= count($encabezados)) {
-                // Tomar solo las columnas necesarias para evitar problemas con columnas extra
-                $filaRecortada = array_slice($fila, 0, count($encabezados));
-                $datos[] = array_combine($encabezados, $filaRecortada);
+            $filaRecortada = array_slice(array_pad($fila, count($encabezados), null), 0, count($encabezados));
+
+            if (count(array_filter($filaRecortada, fn($valor) => $valor !== null && trim((string) $valor) !== '')) === 0) {
+                continue;
             }
+
+            $datos[] = array_combine($encabezados, $filaRecortada);
         }
 
         return $datos;
@@ -203,7 +205,7 @@ class VoterImportService
         // Normalizar las claves del array para manejar diferentes formatos
         $filaNormalizada = [];
         foreach ($fila as $clave => $valor) {
-            $claveNormalizada = strtolower(trim($clave));
+            $claveNormalizada = $this->normalizarClave((string) $clave);
             $filaNormalizada[$claveNormalizada] = $valor;
         }
 
@@ -213,7 +215,7 @@ class VoterImportService
             'nombres' => $filaNormalizada['nombre'] ?? $filaNormalizada['nombres'] ?? null,
             'apellidos' => $filaNormalizada['apellido'] ?? $filaNormalizada['apellidos'] ?? null,
             'direccion' => $filaNormalizada['direccion'] ?? null,
-            'fecha_nacimiento' => $this->parsearFecha($filaNormalizada['fecha_naci'] ?? $filaNormalizada['fecha_nacimiento'] ?? $filaNormalizada['nacimiento'] ?? null),
+            'fecha_nacimiento' => $this->parsearFecha($filaNormalizada['fecha_nac'] ?? $filaNormalizada['fecha_naci'] ?? $filaNormalizada['fecha_nacimiento'] ?? $filaNormalizada['nacimiento'] ?? null),
             
             // Campos adicionales del Excel TSJE
             'nro_registro' => $filaNormalizada['nroreg'] ?? null,
@@ -225,10 +227,10 @@ class VoterImportService
             'seccion' => $filaNormalizada['desc_sec'] ?? null,
             'codigo_barrio' => $filaNormalizada['codigo_sec'] ?? null,
             'barrio_tsje' => $filaNormalizada['desc_sec'] ?? null,
-            'local_votacion' => $filaNormalizada['slocal'] ?? null,
-            'descripcion_local' => $filaNormalizada['desc_locanr'] ?? null,
+            'local_votacion' => $filaNormalizada['slocal'] ?? $filaNormalizada['local_votacion'] ?? null,
+            'descripcion_local' => $filaNormalizada['desc_locanr'] ?? $filaNormalizada['local'] ?? $filaNormalizada['descripcion_local'] ?? null,
             'mesa' => $filaNormalizada['mesa'] ?? null,
-            'orden' => $filaNormalizada['orden'] ?? null,
+            'orden' => $filaNormalizada['ord_mesa'] ?? $filaNormalizada['orden_mesa'] ?? $filaNormalizada['orden'] ?? null,
             'fecha_afiliacion' => $this->parsearFecha($filaNormalizada['fecha_afil'] ?? null),
             
             // Campos estándar (compatibilidad con otros formatos)
@@ -244,6 +246,28 @@ class VoterImportService
             'latitud' => $filaNormalizada['latitud'] ?? $filaNormalizada['lat'] ?? null,
             'longitud' => $filaNormalizada['longitud'] ?? $filaNormalizada['lon'] ?? $filaNormalizada['lng'] ?? null,
         ];
+    }
+
+    /**
+     * Normalizar encabezados de Excel/CSV para aceptar variantes como
+     * "FECHA NAC.", "ORD.MESA" o encabezados con acentos.
+     */
+    private function normalizarClave(string $clave): string
+    {
+        $clave = trim(mb_strtolower($clave, 'UTF-8'));
+        $clave = strtr($clave, [
+            'á' => 'a',
+            'é' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ú' => 'u',
+            'ñ' => 'n',
+            'ü' => 'u',
+        ]);
+
+        $clave = preg_replace('/[^a-z0-9]+/', '_', $clave) ?? $clave;
+
+        return trim($clave, '_');
     }
 
     /**
@@ -387,7 +411,26 @@ class VoterImportService
             return $valor->format('Y-m-d');
         }
 
-        $valor = trim($valor);
+        if (is_numeric($valor)) {
+            $valorNumerico = (string) $valor;
+
+            if (preg_match('/^\d{8}$/', $valorNumerico)) {
+                $fecha = \DateTime::createFromFormat('Ymd', $valorNumerico);
+                if ($fecha !== false) {
+                    return $fecha->format('Y-m-d');
+                }
+            }
+
+            if ((int) $valor > 25569 && (int) $valor < 60000) {
+                try {
+                    return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($valor)->format('Y-m-d');
+                } catch (\Exception $e) {
+                    // Continuar con los formatos de texto.
+                }
+            }
+        }
+
+        $valor = trim((string) $valor);
         
         // Intentar diferentes formatos comunes
         $formatos = [

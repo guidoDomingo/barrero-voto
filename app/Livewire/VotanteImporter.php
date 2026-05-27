@@ -53,8 +53,21 @@ class VotanteImporter extends Component
             
             $columnas = $this->obtenerColumnasArchivo($fullPath);
             
-            // Verificar si contiene columnas características del formato TSJE
-            $columnasTSJE = ['nroreg', 'numero_ced', 'cod_dpto', 'desc_dep', 'mesa', 'orden'];
+            // Verificar si contiene columnas caracteristicas del formato TSJE/electoral.
+            $columnas = array_map(fn($columna) => $this->normalizarColumna((string) $columna), $columnas);
+            $columnasTSJE = [
+                'nroreg',
+                'numero_ced',
+                'cedula',
+                'apellido',
+                'nombre',
+                'fecha_nac',
+                'mesa',
+                'ord_mesa',
+                'orden',
+                'local',
+                'desc_locanr',
+            ];
             $coincidencias = 0;
             
             foreach ($columnasTSJE as $columnaTSJE) {
@@ -87,6 +100,24 @@ class VotanteImporter extends Component
             // En caso de error, mantener configuración por defecto
             $this->es_formato_tsje = false;
         }
+    }
+
+    private function normalizarColumna(string $columna): string
+    {
+        $columna = trim(mb_strtolower($columna, 'UTF-8'));
+        $columna = strtr($columna, [
+            'á' => 'a',
+            'é' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ú' => 'u',
+            'ñ' => 'n',
+            'ü' => 'u',
+        ]);
+
+        $columna = preg_replace('/[^a-z0-9]+/', '_', $columna) ?? $columna;
+
+        return trim($columna, '_');
     }
 
     private function obtenerColumnasArchivo($filePath)
