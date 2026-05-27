@@ -321,7 +321,10 @@ class UserManagement extends Component
 
         $usuarios = $query->paginate($this->perPage);
         $roles = Role::all();
-        $candidatos = Candidato::with('usuario')->where('activo', true)->get();
+        $candidatos = Candidato::with('usuario')
+            ->where('activo', true)
+            ->whereHas('usuario')
+            ->get();
 
         return view('livewire.user-management', [
             'usuarios' => $usuarios,

@@ -145,21 +145,25 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200">
                         @foreach(($metricas['votos_por_lider']->take(8) ?? []) as $lider)
+                        @php
+                            $liderNombre = $lider->usuario?->name ?? 'Lider sin usuario';
+                            $candidatoNombre = $lider->candidato?->usuario?->name;
+                        @endphp
                         <tr>
                             <td class="py-2 pr-3">
                                 <div class="flex items-center">
                                     <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm mr-2">
-                                        {{ strtoupper(substr($lider->usuario->name, 0, 1)) }}
+                                        {{ strtoupper(substr($liderNombre, 0, 1)) }}
                                     </div>
                                     <div class="text-sm font-medium text-gray-900 truncate max-w-28">
-                                        {{ $lider->usuario->name }}
+                                        {{ $liderNombre }}
                                     </div>
                                 </div>
                             </td>
                             <td class="py-2 pr-3">
-                                @if($lider->candidato)
+                                @if($candidatoNombre)
                                     <span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 font-medium">
-                                        {{ $lider->candidato->usuario->name }}
+                                        {{ $candidatoNombre }}
                                     </span>
                                 @else
                                     <span class="text-xs text-gray-400 italic">Sin candidato</span>
@@ -188,13 +192,14 @@
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Líderes Top</h3>
             <div class="space-y-3">
                 @foreach($lideresTop as $lider)
+                    @php($liderNombre = $lider->usuario?->name ?? 'Lider sin usuario')
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
                             <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                                {{ strtoupper(substr($lider->usuario->name, 0, 1)) }}
+                                {{ strtoupper(substr($liderNombre, 0, 1)) }}
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-medium text-gray-900">{{ $lider->usuario->name }}</p>
+                                <p class="text-sm font-medium text-gray-900">{{ $liderNombre }}</p>
                                 <p class="text-xs text-gray-500">{{ $lider->territorio }}</p>
                             </div>
                         </div>

@@ -47,8 +47,10 @@ class Dashboard extends Component
                     $votantes = $candidato->votantes();
                     $total = $votantes->count();
                     $votaron = $votantes->where('ya_voto', true)->count();
+                    $nombre = $candidato->usuario?->name ?? "Candidato #{$candidato->id}";
+
                     return [
-                        'nombre' => $candidato->usuario->name,
+                        'nombre' => $nombre,
                         'partido' => $candidato->partido,
                         'lideres' => $candidato->lideres_count,
                         'total_votantes' => $total,

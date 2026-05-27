@@ -295,7 +295,7 @@
                                         class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option value="">Sin candidato asignado</option>
                                     @foreach($candidatos as $candidato)
-                                        <option value="{{ $candidato->id }}">{{ $candidato->usuario->name }}{{ $candidato->partido ? ' (' . $candidato->partido . ')' : '' }}</option>
+                                        <option value="{{ $candidato->id }}">{{ $candidato->usuario?->name ?? 'Candidato sin usuario' }}{{ $candidato->partido ? ' (' . $candidato->partido . ')' : '' }}</option>
                                     @endforeach
                                 </select>
                                 <p class="text-xs text-gray-500 mt-1">Candidato al que pertenece este usuario</p>
