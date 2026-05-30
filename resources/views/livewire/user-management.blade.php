@@ -288,7 +288,7 @@
                             </div>
 
                             <!-- Campo Candidato (para todos los roles excepto el candidato mismo) -->
-                            @if(!$this->es_rol_candidato && $role_id)
+                            @if(!$esRolCandidato && $role_id)
                             <div class="col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Candidato asignado</label>
                                 <select wire:model="candidato_id"
@@ -303,7 +303,7 @@
                             @endif
 
                             <!-- Campo Partido (solo para candidatos) -->
-                            @if($this->es_rol_candidato)
+                            @if($esRolCandidato)
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Partido político</label>
                                 <input type="text" wire:model="partido" placeholder="Ej: Partido Colorado"
@@ -312,7 +312,7 @@
                             @endif
 
                             <!-- Campos de contraseña (ocultar solo para rol líder) -->
-                            @if(!$this->es_rol_lider)
+                            @if(!$esRolLider)
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                     Contraseña {{ $editingUser ? '' : '*' }}

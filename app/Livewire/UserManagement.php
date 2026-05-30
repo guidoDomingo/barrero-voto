@@ -10,6 +10,7 @@ use App\Models\Lider;
 use App\Models\Candidato;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class UserManagement extends Component
@@ -35,6 +36,8 @@ class UserManagement extends Component
     public $telefono = '';
     public $ci = '';
     public $activo = true;
+    public $esRolLider = false;
+    public $esRolCandidato = false;
     public $candidato_id = ''; // para asignar líder a candidato
     public $partido = '';      // para candidato
     public $tiene_perfil_lider = false; // para mostrar el campo candidato al editar
@@ -56,7 +59,7 @@ class UserManagement extends Component
             $rules['password'] = ['nullable', 'confirmed', Password::defaults()];
         } else {
             // Solo requerir contraseña si NO es rol líder
-            if (!$this->es_rol_lider) {
+            if (!$this->esRolLider) {
                 $rules['password'] = ['required', 'confirmed', Password::defaults()];
             } else {
                 $rules['password'] = ['nullable', 'confirmed', Password::defaults()];
@@ -86,23 +89,32 @@ class UserManagement extends Component
         }
     }
 
-    public function getEsRolLiderProperty()
-    {
-        if (!$this->role_id) return false;
-        $role = Role::find($this->role_id);
-        return $role && $role->slug === 'lider';
-    }
-
-    public function getEsRolCandidatoProperty()
-    {
-        if (!$this->role_id) return false;
-        $role = Role::find($this->role_id);
-        return $role && $role->slug === 'candidato';
-    }
-
     public function updatingSearch()
     {
         $this->resetPage();
+    }
+
+    public function updatedRoleId($value)
+    {
+        $this->actualizarEstadoRol($value);
+
+        if ($this->esRolLider) {
+            $this->password = '';
+            $this->password_confirmation = '';
+        }
+
+        if (!$this->esRolCandidato) {
+            $this->partido = '';
+        }
+    }
+
+    private function actualizarEstadoRol($roleId = null): void
+    {
+        $role = $roleId ? Role::find($roleId) : null;
+        $slug = $role ? Str::of($role->slug ?: $role->nombre)->ascii()->lower()->value() : '';
+
+        $this->esRolLider = $slug === 'lider';
+        $this->esRolCandidato = $slug === 'candidato';
     }
 
     public function limpiarFiltros()
@@ -113,7 +125,7 @@ class UserManagement extends Component
 
     public function nuevoUsuario()
     {
-        $this->reset(['name', 'email', 'password', 'password_confirmation', 'role_id', 'telefono', 'ci', 'activo', 'candidato_id', 'partido', 'tiene_perfil_lider']);
+        $this->reset(['name', 'email', 'password', 'password_confirmation', 'role_id', 'telefono', 'ci', 'activo', 'candidato_id', 'partido', 'tiene_perfil_lider', 'esRolLider', 'esRolCandidato']);
         $this->editingUser = false;
         $this->userId = null;
         $this->activo = true;
@@ -137,6 +149,7 @@ class UserManagement extends Component
         $this->candidato_id = $user->lider?->candidato_id ?? $user->candidato_id ?? '';
         $this->partido = $user->candidato?->partido ?? '';
         $this->tiene_perfil_lider = $user->lider !== null;
+        $this->actualizarEstadoRol($this->role_id);
 
         $this->editingUser = true;
         $this->showModal = true;
@@ -144,6 +157,7 @@ class UserManagement extends Component
 
     public function guardarUsuario()
     {
+        $this->actualizarEstadoRol($this->role_id);
         $this->validate();
 
         try {
@@ -200,7 +214,7 @@ class UserManagement extends Component
                 // Solo generar contraseña automática para rol líder
                 $password = $this->password;
                 
-                if ($this->es_rol_lider && empty($password)) {
+                if ($this->esRolLider && empty($password)) {
                     // Generar contraseña automática: nombre + CI (últimos 4 dígitos)
                     $ciSuffix = $this->ci ? substr($this->ci, -4) : '1234';
                     $password = strtolower(str_replace(' ', '', $this->name)) . $ciSuffix;
@@ -290,7 +304,7 @@ class UserManagement extends Component
     public function cerrarModal()
     {
         $this->showModal = false;
-        $this->reset(['name', 'email', 'password', 'password_confirmation', 'role_id', 'telefono', 'ci', 'activo', 'candidato_id', 'partido', 'tiene_perfil_lider']);
+        $this->reset(['name', 'email', 'password', 'password_confirmation', 'role_id', 'telefono', 'ci', 'activo', 'candidato_id', 'partido', 'tiene_perfil_lider', 'esRolLider', 'esRolCandidato']);
         $this->editingUser = false;
         $this->userId = null;
         $this->resetErrorBag();
