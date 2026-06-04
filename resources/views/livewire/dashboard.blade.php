@@ -144,7 +144,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
-                        @foreach(($metricas['votos_por_lider']->take(8) ?? []) as $lider)
+                        @foreach(($metricas['votos_por_lider'] ?? []) as $lider)
                         @php
                             $liderNombre = $lider->usuario?->name ?? 'Lider sin usuario';
                             $candidatoNombre = $lider->candidato?->usuario?->name;
