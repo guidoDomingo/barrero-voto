@@ -1,6 +1,6 @@
 <div>
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <!-- Total Votantes -->
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center">
@@ -70,6 +70,34 @@
                             @if(isset($metricas['total_votantes']) && $metricas['total_votantes'] > 0)
                             <div class="ml-2 text-sm text-gray-600">
                                 ({{ number_format(($metricas['contactados'] / $metricas['total_votantes']) * 100, 1) }}%)
+                            </div>
+                            @endif
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pasaron por PC -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="rounded-md bg-indigo-500 p-3">
+                        <svg class="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M5 4a3 3 0 013-3h4a3 3 0 013 3v12a3 3 0 01-3 3H8a3 3 0 01-3-3V4zm3-1a1 1 0 00-1 1v12a1 1 0 001 1h4a1 1 0 001-1V4a1 1 0 00-1-1H8zm2 13a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Pasaron por PC</dt>
+                        <dd class="flex items-baseline">
+                            <div class="text-2xl font-semibold text-gray-900">
+                                {{ $metricas['pasaron_por_pc'] ?? 0 }}
+                            </div>
+                            @if(isset($metricas['total_votantes']) && $metricas['total_votantes'] > 0)
+                            <div class="ml-2 text-sm text-gray-600">
+                                ({{ number_format($metricas['porcentaje_pc'] ?? 0, 1) }}%)
                             </div>
                             @endif
                         </dd>
@@ -226,6 +254,7 @@
                         <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Líderes</th>
                         <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Total Votantes</th>
                         <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Ya Votaron</th>
+                        <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider py-2 pr-6">Pasaron PC</th>
                         <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider py-2">Progreso</th>
                     </tr>
                 </thead>
@@ -244,6 +273,7 @@
                         <td class="py-3 pr-6 text-right text-sm text-gray-900 font-medium">{{ $c['lideres'] }}</td>
                         <td class="py-3 pr-6 text-right text-sm text-gray-900">{{ number_format($c['total_votantes']) }}</td>
                         <td class="py-3 pr-6 text-right text-sm font-semibold text-green-600">{{ number_format($c['ya_votaron']) }}</td>
+                        <td class="py-3 pr-6 text-right text-sm font-semibold text-blue-600">{{ number_format($c['pasaron_por_pc']) }}</td>
                         <td class="py-3 min-w-40">
                             <div class="flex items-center gap-2">
                                 <div class="flex-1 bg-gray-200 rounded-full h-2">

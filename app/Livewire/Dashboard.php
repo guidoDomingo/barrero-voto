@@ -47,6 +47,7 @@ class Dashboard extends Component
                     $votantes = $candidato->votantes();
                     $total = $votantes->count();
                     $votaron = $votantes->where('ya_voto', true)->count();
+                    $pasaronPorPc = $candidato->votantes()->where('paso_por_pc_movil', true)->count();
                     $nombre = $candidato->usuario?->name ?? "Candidato #{$candidato->id}";
 
                     return [
@@ -55,6 +56,7 @@ class Dashboard extends Component
                         'lideres' => $candidato->lideres_count,
                         'total_votantes' => $total,
                         'ya_votaron' => $votaron,
+                        'pasaron_por_pc' => $pasaronPorPc,
                         'porcentaje' => $total > 0 ? round(($votaron / $total) * 100, 1) : 0,
                     ];
                 });
