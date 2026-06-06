@@ -182,17 +182,19 @@ class VotantesList extends Component
         $sheet->setCellValue('A1', 'REPORTE DE VOTANTES');
         $sheet->setCellValue('A2', 'Generado: ' . now()->format('d/m/Y H:i:s'));
         $sheet->setCellValue('A3', 'Usuario: ' . Auth::user()->name);
+        $sheet->setTitle('Votantes');
         
         // Encabezados de las columnas
         $encabezados = [
-            'CI', 'NOMBRES', 'APELLIDOS', 'TELÉFONO', 'EMAIL', 'DIRECCIÓN', 
-            'BARRIO', 'ZONA', 'DISTRITO', 'MESA/ORDEN', 'LOCAL VOTACIÓN',
-            'DEPARTAMENTO', 'LÍDER ASIGNADO', 'CÓDIGO INTENCIÓN', 'ESTADO CONTACTO',
-            'NECESITA TRANSPORTE', 'YA VOTÓ', 'PASÓ POR PC MÓVIL', 'FECHA NACIMIENTO', 'NOTAS'
+            'CI',
+            'NOMBRES',
+            'APELLIDOS',
+            'MESA/ORDEN',
+            'LOCAL VOTACIÓN',
+            'LÍDER ASIGNADO',
         ];
         
         $fila = 5; // Empezar después del título
-        $columna = 1;
         
         // Escribir encabezados
         $columnIndex = 0;
@@ -203,12 +205,21 @@ class VotantesList extends Component
         }
         
         // Estilo para encabezados
-        $sheet->getStyle("A{$fila}:T{$fila}")->applyFromArray([
+        $sheet->getStyle("A{$fila}:F{$fila}")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2563eb']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2463D4']],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => '1F2937'],
+                ],
+            ],
         ]);
+        $sheet->getRowDimension($fila)->setRowHeight(22);
         
         // Obtener datos usando la misma lógica de filtrado del método render
         $user = Auth::user();
@@ -275,34 +286,18 @@ class VotantesList extends Component
         // Escribir datos
         $fila = 6;
         foreach ($votantes as $votante) {
-            $mesaOrden = $votante->mesa ? "Mesa {$votante->mesa}" . ($votante->orden ? " / Orden {$votante->orden}" : '') : '-';
+            $mesaOrden = $votante->mesa
+                ? "Mesa {$votante->mesa}" . ($votante->orden ? " / Orden {$votante->orden}" : '')
+                : '-';
             $liderNombre = $votante->lider && $votante->lider->usuario ? $votante->lider->usuario->name : '-';
-            $necesitaTransporte = $votante->necesita_transporte ? 'SÍ' : 'NO';
-            $yaVoto = $votante->ya_voto ? 'SÍ' : 'NO';
-            $pasoPorPcMovil = $votante->paso_por_pc_movil ? 'SÍ' : 'NO';
-            $fechaNacimiento = $votante->fecha_nacimiento ? $votante->fecha_nacimiento->format('d/m/Y') : '-';
 
             $datosVotante = [
                 $votante->ci,
                 $votante->nombres,
                 $votante->apellidos,
-                $votante->telefono ?: '-',
-                $votante->email ?: '-',
-                $votante->direccion ?: '-',
-                $votante->barrio ?: '-',
-                $votante->zona ?: '-',
-                $votante->distrito ?: '-',
                 $mesaOrden,
                 $votante->descripcion_local ?: '-',
-                $votante->departamento ?: '-',
                 $liderNombre,
-                $votante->codigo_intencion ?: '-',
-                $votante->estado_contacto ?: '-',
-                $necesitaTransporte,
-                $yaVoto,
-                $pasoPorPcMovil,
-                $fechaNacimiento,
-                $votante->notas ?: '-'
             ];
             
             $columnIndex = 0;
@@ -314,17 +309,30 @@ class VotantesList extends Component
             $fila++;
         }
         
-        // Ajustar ancho de columnas
-        foreach (range('A', 'T') as $columnID) {
-            $sheet->getColumnDimension($columnID)->setAutoSize(true);
+        $ultimaFila = max(6, $fila - 1);
+        $sheet->getStyle("A6:F{$ultimaFila}")->applyFromArray([
+            'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_HAIR,
+                    'color' => ['rgb' => 'D1D5DB'],
+                ],
+            ],
+        ]);
+
+        foreach (range(6, $ultimaFila) as $numeroFila) {
+            $sheet->getRowDimension($numeroFila)->setRowHeight(20);
         }
-        
-        // Agregar información de resumen
-        $respuestaFila = $fila + 2;
-        $sheet->setCellValue("A{$respuestaFila}", "RESUMEN:");
-        $sheet->setCellValue("A" . ($respuestaFila + 1), "Total de votantes: " . count($votantes));
-        $sheet->setCellValue("A" . ($respuestaFila + 2), "Ya votaron: " . $votantes->where('ya_voto', true)->count());
-        $sheet->setCellValue("A" . ($respuestaFila + 3), "Pendientes: " . $votantes->where('ya_voto', false)->count());
+
+        $sheet->getColumnDimension('A')->setWidth(20);
+        $sheet->getColumnDimension('B')->setWidth(28);
+        $sheet->getColumnDimension('C')->setWidth(28);
+        $sheet->getColumnDimension('D')->setWidth(24);
+        $sheet->getColumnDimension('E')->setWidth(46);
+        $sheet->getColumnDimension('F')->setWidth(28);
+        $sheet->freezePane('A6');
+        $sheet->getPageSetup()->setFitToWidth(1);
+        $sheet->getPageSetup()->setFitToHeight(0);
         
         // Crear el archivo y descargarlo
         $writer = new Xlsx($spreadsheet);
