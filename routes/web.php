@@ -14,6 +14,7 @@ use App\Livewire\DatosMaestros;
 use App\Livewire\UserManagement;
 use App\Livewire\DataCleanup;
 use App\Http\Controllers\PlantillaController;
+use App\Http\Controllers\VotantesExportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,6 +40,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', Dashboard::class)
         ->middleware('admin')
         ->name('dashboard');
+    Route::get('/dashboard/votantes/historico', [VotantesExportController::class, 'historico'])
+        ->middleware('admin')
+        ->name('dashboard.votantes.historico');
 
     // Leader Dashboard (admin y candidato)
     Route::get('/lider/dashboard', LeaderDashboard::class)

@@ -1,4 +1,27 @@
 <div>
+    <div class="mb-6 flex flex-col gap-3 rounded-lg border border-green-200 bg-green-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h2 class="font-semibold text-green-900">Respaldo histórico</h2>
+            <p class="text-sm text-green-800">Incluye todos los datos actuales y una hoja separada con las personas marcadas como “ya votaron”.</p>
+        </div>
+        <a href="{{ route('dashboard.votantes.historico', [], false) }}"
+           x-data="{ descargando: false }"
+           x-on:click="descargando ? $event.preventDefault() : (descargando = true, setTimeout(() => descargando = false, 15000))"
+           x-bind:aria-busy="descargando"
+           class="inline-flex flex-none items-center justify-center rounded-lg bg-green-700 px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-green-800"
+           title="Descargar todos los datos de votantes en Excel">
+            <svg x-show="!descargando" class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 5H7a2 2 0 01-2-2V6a2 2 0 012-2h5l5 5v7a2 2 0 01-2 2z" />
+            </svg>
+            <svg x-show="descargando" style="display: none" class="mr-2 h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span x-show="!descargando">Descargar histórico Excel</span>
+            <span x-show="descargando" style="display: none">Preparando Excel...</span>
+        </a>
+    </div>
+
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <!-- Total Votantes -->
