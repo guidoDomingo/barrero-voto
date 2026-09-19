@@ -8,6 +8,7 @@
            x-data="{ descargando: false }"
            x-on:click="descargando ? $event.preventDefault() : (descargando = true, setTimeout(() => descargando = false, 15000))"
            x-bind:aria-busy="descargando"
+           style="background-color: #15803d; color: #ffffff; border: 1px solid #166534;"
            class="inline-flex flex-none items-center justify-center rounded-lg bg-green-700 px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-green-800"
            title="Descargar todos los datos de votantes en Excel">
             <svg x-show="!descargando" class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
