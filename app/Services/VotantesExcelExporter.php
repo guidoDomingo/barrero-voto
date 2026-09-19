@@ -71,7 +71,7 @@ class VotantesExcelExporter
             ['Ya votaron', $votantes->where('ya_voto', true)->count()],
             ['Pasaron por PC móvil', $votantes->where('paso_por_pc_movil', true)->count()],
             ['Necesitan transporte', $votantes->where('necesita_transporte', true)->count()],
-            ['Importante', 'La intención registrada y el candidato/equipo asignado no indican por quién votó realmente la persona.'],
+            ['Importante', 'datos de los votantes, está en las pestañas de la hoja.'],
         ], null, 'A1');
 
         $sheet->mergeCells('A1:B1');
