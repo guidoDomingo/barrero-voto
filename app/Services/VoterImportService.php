@@ -209,13 +209,17 @@ class VoterImportService
             $filaNormalizada[$claveNormalizada] = $valor;
         }
 
+        [$apellidosCombinados, $nombresCombinados] = $this->separarApellidoYNombre(
+            $filaNormalizada['apellido_y_nombre'] ?? null
+        );
+
         return [
             // Mapeo para Excel TSJE
-            'ci' => $filaNormalizada['numero_ced'] ?? $filaNormalizada['cedula'] ?? $filaNormalizada['ci'] ?? null,
-            'nombres' => $filaNormalizada['nombre'] ?? $filaNormalizada['nombres'] ?? null,
-            'apellidos' => $filaNormalizada['apellido'] ?? $filaNormalizada['apellidos'] ?? null,
+            'ci' => $this->normalizarCedula($filaNormalizada['numero_ced'] ?? $filaNormalizada['cedula'] ?? $filaNormalizada['ci'] ?? null),
+            'nombres' => $filaNormalizada['nombre'] ?? $filaNormalizada['nombres'] ?? $nombresCombinados,
+            'apellidos' => $filaNormalizada['apellido'] ?? $filaNormalizada['apellidos'] ?? $apellidosCombinados,
             'direccion' => $filaNormalizada['direccion'] ?? null,
-            'fecha_nacimiento' => $this->parsearFecha($filaNormalizada['fecha_nac'] ?? $filaNormalizada['fecha_naci'] ?? $filaNormalizada['fecha_nacimiento'] ?? $filaNormalizada['nacimiento'] ?? null),
+            'fecha_nacimiento' => $this->parsearFecha($filaNormalizada['fec_nac'] ?? $filaNormalizada['fecha_nac'] ?? $filaNormalizada['fecha_naci'] ?? $filaNormalizada['fecha_nacimiento'] ?? $filaNormalizada['nacimiento'] ?? null),
             
             // Campos adicionales del Excel TSJE
             'nro_registro' => $filaNormalizada['nroreg'] ?? null,
@@ -227,8 +231,8 @@ class VoterImportService
             'seccion' => $filaNormalizada['desc_sec'] ?? null,
             'codigo_barrio' => $filaNormalizada['codigo_sec'] ?? null,
             'barrio_tsje' => $filaNormalizada['desc_sec'] ?? null,
-            'local_votacion' => $filaNormalizada['slocal'] ?? $filaNormalizada['local_votacion'] ?? null,
-            'descripcion_local' => $filaNormalizada['desc_locanr'] ?? $filaNormalizada['local'] ?? $filaNormalizada['descripcion_local'] ?? null,
+            'local_votacion' => $filaNormalizada['slocal'] ?? $filaNormalizada['local_n'] ?? $filaNormalizada['local_numero'] ?? null,
+            'descripcion_local' => $filaNormalizada['desc_locanr'] ?? $filaNormalizada['local_de_votacion'] ?? $filaNormalizada['local'] ?? $filaNormalizada['descripcion_local'] ?? $filaNormalizada['local_votacion'] ?? null,
             'mesa' => $filaNormalizada['mesa'] ?? null,
             'orden' => $filaNormalizada['ord_mesa'] ?? $filaNormalizada['orden_mesa'] ?? $filaNormalizada['orden'] ?? null,
             'fecha_afiliacion' => $this->parsearFecha($filaNormalizada['fecha_afil'] ?? null),
@@ -242,10 +246,63 @@ class VoterImportService
             'ocupacion' => $filaNormalizada['ocupacion'] ?? null,
             'codigo_intencion' => strtoupper($filaNormalizada['codigo_intencion'] ?? $filaNormalizada['intencion'] ?? 'C'),
             'necesita_transporte' => $this->parsearBooleano($filaNormalizada['necesita_transporte'] ?? $filaNormalizada['transporte'] ?? false),
+            'paso_por_pc_movil' => $this->parsearPasoPorPc($filaNormalizada['paso_por_pc'] ?? $filaNormalizada['paso_por_pc_movil'] ?? null),
+            'ya_voto' => $this->parsearBooleano($filaNormalizada['voto'] ?? $filaNormalizada['ya_voto'] ?? false),
             'notas' => $filaNormalizada['notas'] ?? $filaNormalizada['observaciones'] ?? null,
             'latitud' => $filaNormalizada['latitud'] ?? $filaNormalizada['lat'] ?? null,
             'longitud' => $filaNormalizada['longitud'] ?? $filaNormalizada['lon'] ?? $filaNormalizada['lng'] ?? null,
         ];
+    }
+
+    /**
+     * Quitar separadores visuales de la cedula antes de buscar duplicados o guardarla.
+     */
+    private function normalizarCedula($valor): ?string
+    {
+        if ($valor === null || trim((string) $valor) === '') {
+            return null;
+        }
+
+        $cedula = preg_replace('/[^0-9A-Za-z]/', '', trim((string) $valor));
+
+        return $cedula !== '' ? $cedula : null;
+    }
+
+    /**
+     * El padron entrega el nombre como "APELLIDOS, NOMBRES".
+     * Sin coma no es posible separarlo de forma fiable, por lo que se conserva
+     * completo como apellido y se deja el nombre para la regla PENDIENTE.
+     */
+    private function separarApellidoYNombre($valor): array
+    {
+        $valor = trim((string) $valor);
+        if ($valor === '') {
+            return [null, null];
+        }
+
+        if (!str_contains($valor, ',')) {
+            return [$valor, null];
+        }
+
+        [$apellidos, $nombres] = array_map('trim', explode(',', $valor, 2));
+
+        return [$apellidos ?: null, $nombres ?: null];
+    }
+
+    /**
+     * En algunos padrones esta columna contiene el operador/PC (por ejemplo
+     * "Op1 GG") en lugar de "Si". Cualquier valor no vacio, salvo una
+     * negacion explicita, indica que la persona paso por el PC.
+     */
+    private function parsearPasoPorPc($valor): bool
+    {
+        if ($valor === null || trim((string) $valor) === '') {
+            return false;
+        }
+
+        $valorNormalizado = $this->normalizarClave((string) $valor);
+
+        return !in_array($valorNormalizado, ['no', 'false', '0'], true);
     }
 
     /**
