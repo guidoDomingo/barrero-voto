@@ -265,6 +265,9 @@
                             Nombre
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Local de votación
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Teléfono
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -320,6 +323,14 @@
                                         </span>
                                     @endif
                                 </div>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">
+                                <div class="max-w-xs font-medium" title="{{ $votante->descripcion_local ?: $votante->local_votacion }}">
+                                    {{ $votante->descripcion_local ?: ($votante->local_votacion ?: 'Sin local asignado') }}
+                                </div>
+                                @if($votante->descripcion_local && $votante->local_votacion)
+                                    <div class="mt-1 text-xs text-gray-400">Código: {{ $votante->local_votacion }}</div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                 {{ $votante->telefono ?? '-' }}
@@ -525,6 +536,17 @@
                                 </span>
                             @endif
                         </div>
+                    </div>
+
+                    <!-- Local de votación visible al abrir la lista -->
+                    <div class="mb-3 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+                        <div class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Local de votación</div>
+                        <div class="mt-1 text-sm font-bold text-indigo-900">
+                            {{ $votante->descripcion_local ?: ($votante->local_votacion ?: 'Sin local asignado') }}
+                        </div>
+                        @if($votante->descripcion_local && $votante->local_votacion)
+                            <div class="mt-1 text-xs text-indigo-600">Código: {{ $votante->local_votacion }}</div>
+                        @endif
                     </div>
 
                     <!-- Intención de Voto Detallada -->
@@ -817,6 +839,10 @@
                         
                         <!-- Columna 4-5: Ubicación -->
                         <div class="col-span-2 text-xs text-gray-600">
+                            <div class="truncate font-semibold text-indigo-700"
+                                 title="{{ $votante->descripcion_local ?: $votante->local_votacion }}">
+                                {{ $votante->descripcion_local ?: ($votante->local_votacion ?: 'Sin local') }}
+                            </div>
                             @if($votante->distrito)
                                 <div class="truncate" title="{{ $votante->distrito }}">🏢 {{ $votante->distrito }}</div>
                             @endif
